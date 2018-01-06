@@ -18,9 +18,17 @@
 #' @export
 
 Currency <- function(iso, calendar) {
-  assertthat::assert_that(assertthat::is.string(iso), nchar(iso) == 3,
-    is.JointCalendar(calendar))
+  validate_Currency(new_Currency(iso, calendar))
+}
+
+new_Currency <- function(iso, calendar) {
   structure(list(iso = toupper(iso), calendar = calendar), class = "Currency")
+}
+
+validate_Currency <- function(x) {
+  assertthat::assert_that(assertthat::is.string(x$iso), nchar(x$iso) == 3,
+    is.JointCalendar(x$calendar))
+  x
 }
 
 #' Handy Currency constructors
@@ -48,54 +56,31 @@ NULL
 
 #' @rdname CurrencyConstructors
 #' @export
-AUD <- function() Currency("AUD", c(AUSYCalendar()))
+AUD <- function() new_Currency("AUD", c(AUSYCalendar()))
 #' @rdname CurrencyConstructors
 #' @export
-EUR <- function() Currency("EUR", c(EUTACalendar()))
+EUR <- function() new_Currency("EUR", c(EUTACalendar()))
 #' @rdname CurrencyConstructors
 #' @export
-GBP <- function() Currency("GBP", c(GBLOCalendar()))
+GBP <- function() new_Currency("GBP", c(GBLOCalendar()))
 #' @rdname CurrencyConstructors
 #' @export
-JPY <- function() Currency("JPY", c(JPTOCalendar()))
+JPY <- function() new_Currency("JPY", c(JPTOCalendar()))
 #' @rdname CurrencyConstructors
 #' @export
-NZD <- function() Currency("NZD", c(NZAUCalendar(), NZWECalendar()))
+NZD <- function() new_Currency("NZD", c(NZAUCalendar(), NZWECalendar()))
 #' @rdname CurrencyConstructors
 #' @export
-USD <- function() Currency("USD", c(USNYCalendar()))
+USD <- function() new_Currency("USD", c(USNYCalendar()))
 #' @rdname CurrencyConstructors
 #' @export
-CHF <- function() Currency("CHF", c(CHZHCalendar()))
+CHF <- function() new_Currency("CHF", c(CHZHCalendar()))
 #' @rdname CurrencyConstructors
 #' @export
-HKD <- function() Currency("HKD", c(HKHKCalendar()))
+HKD <- function() new_Currency("HKD", c(HKHKCalendar()))
 #' @rdname CurrencyConstructors
 #' @export
-NOK <- function() Currency("NOK", c(NOOSCalendar()))
-
-
-#' ISO
-#'
-#' Get ISO from an object. The default method assumes the ISO can be accessed
-#' as if it were an attribute with name `iso` (e.g. `x$iso`). The method for
-#' `CurrencyPair` concatenates the ISOs of the constituent currencies (e.g.
-#' `iso(AUDUSD())` returns "AUDUSD") while the methods for `CashIndex` and
-#' `IborIndex` return the ISO of the index's currency.
-#'
-#' @param x object from which to extract an ISO
-#' @return a string of the ISO
-#' @examples
-#' library("lubridate")
-#' iso(AUD())
-#' iso(AUDUSD())
-#' iso(AUDBBSW(months(3)))
-#' iso(AONIA())
-#' @export
-iso <- function(x) UseMethod("iso")
-#' @rdname iso
-#' @export
-iso.default <- function(x) x$iso
+NOK <- function() new_Currency("NOK", c(NOOSCalendar()))
 #' @export
 locale.Currency <- function(x) locale(x$calendar)
 #' @export

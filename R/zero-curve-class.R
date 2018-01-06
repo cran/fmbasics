@@ -31,21 +31,18 @@
 #' @param interpolation an [`Interpolation`] object
 #' @return a `ZeroCurve` object
 #' @examples
-#' zc_df <- fmdata_example("zerocurve.csv")
-#' values <- zc_df[["dfs"]]
-#' starts <- as.Date(as.character(zc_df[["start"]]), "%Y%m%d")
-#' ends <- as.Date(as.character(zc_df[["end"]]), "%Y%m%d")
-#' dfs <- DiscountFactor(values, starts, ends)
-#' zc <- ZeroCurve(dfs, starts[1], LogDFInterpolation())
-#' plot(zc$pillar_times, zc$pillar_zeros, xlab = 'Years', ylab = 'Zero')
+#' build_zero_curve()
 #' @export
 #' @seealso [Interpolation]
 
 ZeroCurve <- function(discount_factors, reference_date, interpolation) {
+  validate_ZeroCurve(new_ZeroCurve(discount_factors, reference_date, interpolation))
+}
+
+
+new_ZeroCurve <- function(discount_factors, reference_date, interpolation) {
 
   assertthat::assert_that(
-    is.DiscountFactor(discount_factors),
-    assertthat::is.date(reference_date),
     is.ConstantInterpolation(interpolation) ||
       is.LinearInterpolation(interpolation) ||
       is.LogDFInterpolation(interpolation) ||
@@ -59,12 +56,7 @@ ZeroCurve <- function(discount_factors, reference_date, interpolation) {
   cp <- Inf
 
   dt <- fmdates::year_frac(reference_date, discount_factors$end_date, db)
-  assertthat::assert_that(all(dt >= 0))
   r <- as_InterestRate(discount_factors, cp, db)$value
-  # Sort into ascending order as this is assumed in code below.
-  index <- order(dt, decreasing = FALSE)
-  dt <- dt[index]
-  r  <- r[index]
 
   f <- function(t) {
 
@@ -112,10 +104,35 @@ ZeroCurve <- function(discount_factors, reference_date, interpolation) {
     discount_factors = discount_factors,
     pillar_times = dt,
     pillar_zeros = r,
-    interpolator = f),
+    interpolator = f,
+    day_basis = db,
+    compounding = cp),
     class = "ZeroCurve"
   )
 
+}
+
+validate_ZeroCurve <- function(x) {
+  assertthat::assert_that(
+    all(x$reference_date <= x$discount_factors$end_date),
+    is.DiscountFactor(x$discount_factors),
+    assertthat::is.date(x$reference_date),
+    !is.unsorted(x$discount_factors$end_date)
+  )
+  x
+}
+
+#' Inherits from ZeroCurve
+#'
+#' Checks whether object inherits from `ZeroCurve` class
+#'
+#' @param x an R object
+#' @return `TRUE` if `x` inherits from the `ZeroCurve` class; otherwise `FALSE`
+#' @examples
+#' is.ZeroCurve(build_zero_curve())
+#' @export
+is.ZeroCurve <- function(x) {
+  inherits(x, "ZeroCurve")
 }
 
 #' @export
@@ -223,20 +240,11 @@ format.Interpolation <- function(x, ...) paste0("<", class(x)[1], ">")
 #' @export
 print.Interpolation <- function(x, ...) cat(format(x), "\n")
 
-
-#' Interpolate values from an object
-#'
-#' @param x the object to interpolate.
-#' @param ... other parameters that defines how to interpolate the object
-#' @return an interpolated value or set of values
-#' @export
-interpolate <- function(x, ...) UseMethod("interpolate")
-
 #' Interpolate a `ZeroCurve`
 #'
 #' There are two key interpolation schemes available in the `stats` package:
-#' constant and linear interpolation via `[stats::approxfun()]` and
-#' spline interpolation via `[stats::splinefun()]`. The `interpolate()` method
+#' constant and linear interpolation via [stats::approxfun()] and
+#' spline interpolation via [stats::splinefun()]. The `interpolate()` method
 #' is a simple wrapper around these methods that are useful for the purposes
 #' of interpolation financial market objects like zero coupon interest rate
 #' curves.
@@ -245,13 +253,72 @@ interpolate <- function(x, ...) UseMethod("interpolate")
 #' @param at a non-negative numeric vector representing the years at which to
 #'   interpolate the zero curve
 #' @param ... unused in this method
-#' @return a numeric vector of zero rates
+#' @return a numeric vector of zero rates (continuously compounded, act/365)
 #' @examples
 #' zc <- build_zero_curve(LogDFInterpolation())
 #' interpolate(zc, c(1.5, 3))
 #' @export
+#' @family interpolate functions
 interpolate.ZeroCurve <- function(x, at, ...) {
   assertthat::assert_that(is.numeric(at), all(at >= 0))
   x$interpolator(at)
 }
 
+#' @importFrom tibble type_sum
+#' @export
+type_sum.ZeroCurve <- function(x) {
+  "ZeroCurve"
+}
+
+
+
+# Curve methods -----------------------------------------------------------
+
+#' @rdname interpolate_zeros
+#' @export
+interpolate_zeros.ZeroCurve <- function(x, at, compounding = NULL, day_basis = NULL, ...) {
+
+  assertthat::assert_that(
+    is.ZeroCurve(x),
+    assertthat::is.date(at),
+    is.null(compounding) || is_valid_compounding(compounding),
+    is.null(day_basis) || fmdates::is_valid_day_basis(day_basis)
+  )
+
+  tt <- year_frac(x$reference_date, at, x$day_basis)
+  zr <- InterestRate(interpolate(x, tt), x$compounding, x$day_basis)
+  if (is.null(compounding) && is.null(day_basis)) {
+    return(zr)
+  } else {
+    as_InterestRate(zr, compounding = compounding, day_basis = day_basis)
+  }
+}
+
+#' @rdname interpolate_dfs
+#' @export
+interpolate_fwds.ZeroCurve <- function(x, from, to, ...) {
+  assertthat::assert_that(
+    is.ZeroCurve(x),
+    assertthat::is.date(from),
+    assertthat::is.date(to),
+    all(from < to)
+  )
+  forward_dfs <- interpolate_dfs(x, from, to, ...)
+  as_InterestRate(forward_dfs, 0, x$day_basis)
+}
+
+#' @rdname interpolate_dfs
+#' @export
+interpolate_dfs.ZeroCurve <- function(x, from, to, ...) {
+  assertthat::assert_that(
+    is.ZeroCurve(x),
+    assertthat::is.date(from),
+    assertthat::is.date(to),
+    all(from <= to)
+  )
+  r1 <- interpolate_zeros(x, from, ...)
+  r2 <- interpolate_zeros(x, to, ...)
+  df_start <- as_DiscountFactor(r1, x$reference_date, from)
+  df_end <- as_DiscountFactor(r2, x$reference_date, to)
+  df_end / df_start
+}

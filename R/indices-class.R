@@ -1,10 +1,3 @@
-
-make_index <- function(type, ...) {
-  assertthat::assert_that(is.character(type))
-  structure(list(...), class = c(paste0(type, "Index"), "Index"))
-}
-
-
 #' IborIndex class
 #'
 #' This can be used to represent IBOR like indices (e.g. LIBOR, BBSW, CDOR)
@@ -34,21 +27,12 @@ make_index <- function(type, ...) {
 IborIndex <- function(name, currency, tenor, spot_lag, calendar, day_basis,
   day_convention, is_eom) {
 
-  assertthat::assert_that(
-    assertthat::is.string(name),
-    is.Currency(currency),
-    lubridate::is.period(tenor),
-    lubridate::is.period(spot_lag),
-    fmdates::is.JointCalendar(calendar),
-    fmdates::is_valid_day_basis(day_basis),
-    fmdates::is_valid_bdc(day_convention),
-    assertthat::is.flag(is_eom)
-  )
-
-  make_index("Ibor", name = name, currency = currency, tenor = tenor,
-    spot_lag = spot_lag, calendar = calendar, pfc_calendar = locale(calendar),
+  x <- new_Index("Ibor", name = name, currency = currency, tenor = tenor,
+    spot_lag = spot_lag, calendar = calendar, pfc_calendar = currency$calendar,
     day_basis = day_basis, day_convention = day_convention, is_eom = is_eom
   )
+
+  validate_IborIndex(x)
 
 }
 
@@ -71,69 +55,48 @@ IborIndex <- function(name, currency, tenor, spot_lag, calendar, day_basis,
 CashIndex <- function(name, currency, spot_lag, calendar, day_basis,
   day_convention) {
 
-  assertthat::assert_that(
-    assertthat::is.string(name),
-    is.Currency(currency),
-    lubridate::is.period(spot_lag),
-    fmdates::is.JointCalendar(calendar),
-    fmdates::is_valid_day_basis(day_basis),
-    fmdates::is_valid_bdc(day_convention)
-  )
-
-  make_index("Cash", name = name, currency = currency,
+  x <- new_Index("Cash", name = name, currency = currency,
     tenor = lubridate::days(1), spot_lag = spot_lag, calendar = calendar,
-    pfc_calendar = locale(calendar), day_basis = day_basis,
+    pfc_calendar = currency$calendar, day_basis = day_basis,
     day_convention = day_convention, is_eom = FALSE
   )
 
+  validate_CashIndex(x)
+
 }
 
-#' Index date shifters
-#'
-#' A collection of methods that shift dates according to index conventions.
-#'
-#' The following describes the default methods. `to_reset()` treats the input
-#' dates as value dates and shifts these to the corresponding reset or fixing
-#' dates using the index's spot lag; `to_value()` treats the input dates as
-#' reset or fixing dates and shifts them to the corresponding value dates using
-#' the index's spot lag; and `to_maturity()` treats the input dates as value
-#' dates and shifts these to the index's corresponding maturity date using the
-#' index's tenor.
-#'
-#' @param dates a vector of dates to shift
-#' @param index an instance of an object that inherits from the `Index` class.
-#' @return a vector of shifted dates
-#' @examples
-#' library(lubridate)
-#' to_reset(ymd(20170101) + days(0:30), AUDBBSW(months(3)))
-#' to_value(ymd(20170101) + days(0:30), AUDBBSW(months(3)))
-#' to_maturity(ymd(20170101) + days(0:30), AUDBBSW(months(3)))
-#' @name indexshifters
-#' @export
-to_reset <- function(dates, index) UseMethod("to_reset", index)
-#' @rdname indexshifters
-#' @export
-to_value <- function(dates, index) UseMethod("to_value", index)
-#' @rdname indexshifters
-#' @export
-to_maturity <- function(dates, index) UseMethod("to_maturity", index)
-#' @rdname indexshifters
-#' @export
-to_reset.default <- function(dates, index) {
-  fmdates::shift(dates, -index$spot_lag,
-    index$day_convention, index$calendar, index$is_eom)
+
+new_Index <- function(type, ...) {
+  assertthat::assert_that(is.character(type))
+  structure(list(...), class = c(paste0(type, "Index"), "Index"))
 }
-#' @rdname indexshifters
-#' @export
-to_value.default <- function(dates, index) {
-  fmdates::shift(dates, index$spot_lag,
-    index$day_convention, index$calendar, index$is_eom)
+
+validate_IborIndex <- function(x) {
+  assertthat::assert_that(
+    assertthat::is.string(x$name),
+    is.Currency(x$currency),
+    lubridate::is.period(x$tenor),
+    lubridate::is.period(x$spot_lag),
+    fmdates::is.JointCalendar(x$calendar),
+    fmdates::is.JointCalendar(x$pfc_calendar),
+    fmdates::is_valid_day_basis(x$day_basis),
+    fmdates::is_valid_bdc(x$day_convention),
+    assertthat::is.flag(x$is_eom)
+  )
+  x
 }
-#' @rdname indexshifters
-#' @export
-to_maturity.default <- function(dates, index) {
-  fmdates::shift(dates, index$tenor,
-    index$day_convention, c(index$pfc_calendar, index$calendar), index$is_eom)
+
+validate_CashIndex <- function(x) {
+  assertthat::assert_that(
+    assertthat::is.string(x$name),
+    is.Currency(x$currency),
+    lubridate::is.period(x$spot_lag),
+    fmdates::is.JointCalendar(x$calendar),
+    fmdates::is.JointCalendar(x$pfc_calendar),
+    fmdates::is_valid_day_basis(x$day_basis),
+    fmdates::is_valid_bdc(x$day_convention)
+  )
+  x
 }
 
 #' Index class checkers
@@ -238,14 +201,14 @@ NULL
 #' @rdname iborindices
 #' @export
 AUDBBSW <- function (tenor) {
-  IborIndex("AUDBBSW", AUD(), tenor, lubridate::days(0),
+  IborIndex("BBSW", AUD(), tenor, lubridate::days(0),
     c(AUSYCalendar()), "act/365", "ms", FALSE)
 }
 
 #' @rdname iborindices
 #' @export
 AUDBBSW1b <- function (tenor) {
-  IborIndex("AUDBBSW1b", AUD(), tenor, lubridate::days(1),
+  IborIndex("BBSW1b", AUD(), tenor, lubridate::days(1),
     c(AUSYCalendar()), "act/365", "ms", FALSE)
 }
 
@@ -264,7 +227,7 @@ GBPLIBOR <- function (tenor) {
   } else {
     day_convention <- "mf"
   }
-  IborIndex("GBPLIBOR", GBP(), tenor, lubridate::days(0),
+  IborIndex("LIBOR", GBP(), tenor, lubridate::days(0),
     c(GBLOCalendar()), "act/365", day_convention, TRUE)
 }
 
@@ -280,7 +243,7 @@ JPYLIBOR <- function (tenor) {
   } else {
     day_convention <- "mf"
   }
-  IborIndex("JPYLIBOR", JPY(), tenor, spot_lag,
+  IborIndex("LIBOR", JPY(), tenor, spot_lag,
     c(GBLOCalendar()), "act/360", day_convention, TRUE)
 }
 
@@ -296,14 +259,14 @@ JPYTIBOR <- function (tenor) {
   } else {
     day_convention <- "mf"
   }
-  IborIndex("JPYTIBOR", JPY(), tenor, spot_lag,
+  IborIndex("TIBOR", JPY(), tenor, spot_lag,
     c(JPTOCalendar()), "act/365", day_convention, FALSE)
 }
 
 #' @rdname iborindices
 #' @export
 NZDBKBM <- function (tenor) {
-  IborIndex("NZDBKBM", NZD(), tenor, lubridate::days(0),
+  IborIndex("BKBM", NZD(), tenor, lubridate::days(0),
     c(NZAUCalendar(), NZWECalendar()), "act/365", "mf", FALSE)
 }
 
@@ -323,7 +286,7 @@ USDLIBOR <- function (tenor) {
     day_convention <- "mf"
     calendar <- c(GBLOCalendar())
   }
-  IborIndex("USDLIBOR", USD(), tenor, spot_lag,
+  IborIndex("LIBOR", USD(), tenor, spot_lag,
     calendar, "act/360", day_convention, TRUE)
 }
 
@@ -342,12 +305,12 @@ CHFLIBOR <- function (tenor) {
     spot_lag <- lubridate::days(2)
     day_convention <- "mf"
   }
-  IborIndex("CHFLIBOR", CHF(), tenor, spot_lag, c(GBLOCalendar()),
+  IborIndex("LIBOR", CHF(), tenor, spot_lag, c(GBLOCalendar()),
     "act/360", day_convention, TRUE)
 }
 
 CHFLIBOR3mF <- function () {
-  IborIndex("CHFLIBOR", CHF(), months(3), lubridate::days(1),
+  IborIndex("LIBOR", CHF(), months(3), lubridate::days(1),
     c(GBLOCalendar()), "act/360", "mf", TRUE)
 }
 
@@ -360,7 +323,7 @@ HKDHIBOR <- function (tenor) {
   } else {
     day_convention <- "mf"
   }
-  IborIndex("HKDHIBOR", HKD(), tenor, lubridate::days(0),
+  IborIndex("HIBOR", HKD(), tenor, lubridate::days(0),
     c(HKHKCalendar()), "act/365", day_convention, FALSE)
 }
 
@@ -381,7 +344,7 @@ NOKNIBOR <- function (tenor) {
     spot_lag <- lubridate::days(2)
     day_convention <- "mf"
   }
-  IborIndex("NOKNIBOR", NOK(), tenor, spot_lag,
+  IborIndex("NIBOR", NOK(), tenor, spot_lag,
     c(NOOSCalendar()), "act/360", day_convention, FALSE)
 }
 

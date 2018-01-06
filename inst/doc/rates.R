@@ -37,15 +37,3 @@ as_InterestRate(df, compounding = 2, day_basis = 'act/365')
 dfs <- DiscountFactor(seq(1, 0.9, -1e-3), ymd(20140101), ymd(20150101) + days(0:100))
 dfs[23:26]
 
-## ------------------------------------------------------------------------
-zc_df <- fmdata_example("zerocurve.csv")
-values <- zc_df$dfs
-starts <- as.Date(as.character(zc_df[["start"]]), "%Y%m%d")
-ends <- as.Date(as.character(zc_df[["end"]]), "%Y%m%d")
-dfs <- DiscountFactor(values, starts, ends)
-zc <- ZeroCurve(dfs, starts[1], LogDFInterpolation())
-plot(zc$pillar_times, zc$pillar_zeros, xlab = 'Years', ylab = 'Zero')
-
-## ------------------------------------------------------------------------
-interpolate(zc, 1:20)
-

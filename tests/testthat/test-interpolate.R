@@ -1,9 +1,7 @@
 context("ZeroCurve")
 
-test_that("fmdata_example works", {
-  df <- fmdata_example("zerocurve.csv")
-  expect_is(df, "data.frame")
-  expect_named(df, c("start", "end", "zeros", "dfs"))
+test_that("build_zero_curve works", {
+  expect_is(build_zero_curve(), "ZeroCurve")
 })
 
 test_that("Interpolation checks work", {
@@ -41,4 +39,15 @@ test_that("Interpolation works", {
   expect_equal(interpolate(zc, c(0, 4, 6, 50)),
     c(head(zc$pillar_zeros, 1), sf(c(4, 6)), tail(zc$pillar_zeros, 1)))
 
+})
+
+
+test_that("Higher level interpolation works", {
+  zc <- build_zero_curve(ConstantInterpolation())
+  expect_is(interpolate_zeros(zc, lubridate::ymd(20161231, 20171231)),
+    "InterestRate")
+  expect_is(interpolate_dfs(zc, lubridate::ymd(20151231), lubridate::ymd(20161231)),
+    "DiscountFactor")
+  expect_is(interpolate_fwds(zc, lubridate::ymd(20151231), lubridate::ymd(20161231)),
+    "InterestRate")
 })

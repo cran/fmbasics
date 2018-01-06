@@ -10,7 +10,6 @@
 \alias{to_tomorrow}
 \alias{to_fx_value}
 \alias{invert}
-\alias{is.CurrencyPair}
 \title{CurrencyPair methods}
 \usage{
 is_t1(x)
@@ -28,8 +27,6 @@ to_tomorrow(dates, x)
 to_fx_value(dates, tenor, x)
 
 invert(x)
-
-is.CurrencyPair(x)
 }
 \arguments{
 \item{x}{a \code{CurrencyPair} object}
@@ -44,7 +41,7 @@ is.CurrencyPair(x)
 A collection of methods related to currency pairs.
 }
 \details{
-The methods are sumarised as follows:
+The methods are summarised as follows:
 \itemize{
 \item \code{is_t1}: Returns \code{TRUE} if the currency pair settles one good day after
 trade. This includes the following currencies crossed with the USD: CAD, TRY,

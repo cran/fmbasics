@@ -14,8 +14,10 @@
 #' @export
 
 CurrencyPair <- function (base_ccy, quote_ccy, calendar = NULL) {
-  assertthat::assert_that(is.Currency(base_ccy), is.Currency(quote_ccy),
-    is.null(calendar) || fmdates::is.JointCalendar(calendar))
+  validate_CurrencyPair(new_CurrencyPair(base_ccy, quote_ccy, calendar))
+}
+
+new_CurrencyPair <- function(base_ccy, quote_ccy, calendar = NULL) {
   if (is.null(calendar)) {
     calendar <- c(base_ccy$calendar, quote_ccy$calendar)
   }
@@ -23,11 +25,17 @@ CurrencyPair <- function (base_ccy, quote_ccy, calendar = NULL) {
     calendar = remove_usny(calendar)), class = "CurrencyPair")
 }
 
+validate_CurrencyPair <- function(x) {
+  assertthat::assert_that(is.Currency(x$base_ccy), is.Currency(x$quote_ccy),
+    is.null(x$calendar) || fmdates::is.JointCalendar(x$calendar))
+  x
+}
+
 #' CurrencyPair methods
 #'
 #' A collection of methods related to currency pairs.
 #'
-#' The methods are sumarised as follows:
+#' The methods are summarised as follows:
 #'
 #' * `is_t1`: Returns `TRUE` if the currency pair settles one good day after
 #' trade. This includes the following currencies crossed with the USD: CAD, TRY,
@@ -133,12 +141,19 @@ to_fx_value = function(dates, tenor, x) {
 #' @rdname CurrencyPairMethods
 #' @export
 invert = function (x) {
-  CurrencyPair(x$quote_ccy, x$base_ccy, x$calendar)
+  new_CurrencyPair(x$quote_ccy, x$base_ccy, x$calendar)
 }
 
-#' @rdname CurrencyPairMethods
+#' Inherits from `CurrencyPair` class
+#'
+#' @param x an R object
+#' @return `TRUE` if `x` inherits from the `CurrencyPair` class; otherwise `FALSE`
+#' @examples
+#' is.CurrencyPair(AUDUSD())
 #' @export
 is.CurrencyPair <- function(x) inherits(x, "CurrencyPair")
+
+
 #' @rdname iso
 #' @export
 iso.CurrencyPair <- function(x) {paste0(iso(x$base_ccy), iso(x$quote_ccy))}
@@ -163,43 +178,43 @@ NULL
 
 #' @rdname CurrencyPairConstructors
 #' @export
-AUDUSD <- function () CurrencyPair(AUD(), USD())
+AUDUSD <- function () new_CurrencyPair(AUD(), USD())
 #' @rdname CurrencyPairConstructors
 #' @export
-EURUSD <- function () CurrencyPair(EUR(), USD())
+EURUSD <- function () new_CurrencyPair(EUR(), USD())
 #' @rdname CurrencyPairConstructors
 #' @export
-NZDUSD <- function () CurrencyPair(NZD(), USD())
+NZDUSD <- function () new_CurrencyPair(NZD(), USD())
 #' @rdname CurrencyPairConstructors
 #' @export
-GBPUSD <- function () CurrencyPair(GBP(), USD())
+GBPUSD <- function () new_CurrencyPair(GBP(), USD())
 #' @rdname CurrencyPairConstructors
 #' @export
-USDJPY <- function () CurrencyPair(USD(), JPY())
+USDJPY <- function () new_CurrencyPair(USD(), JPY())
 #' @rdname CurrencyPairConstructors
 #' @export
-GBPJPY <- function () CurrencyPair(GBP(), JPY())
+GBPJPY <- function () new_CurrencyPair(GBP(), JPY())
 #' @rdname CurrencyPairConstructors
 #' @export
-EURGBP <- function () CurrencyPair(EUR(), GBP())
+EURGBP <- function () new_CurrencyPair(EUR(), GBP())
 #' @rdname CurrencyPairConstructors
 #' @export
-AUDNZD <- function () CurrencyPair(AUD(), NZD())
+AUDNZD <- function () new_CurrencyPair(AUD(), NZD())
 #' @rdname CurrencyPairConstructors
 #' @export
-EURCHF <- function () CurrencyPair(EUR(), CHF())
+EURCHF <- function () new_CurrencyPair(EUR(), CHF())
 #' @rdname CurrencyPairConstructors
 #' @export
-USDCHF <- function () CurrencyPair(USD(), CHF())
+USDCHF <- function () new_CurrencyPair(USD(), CHF())
 #' @rdname CurrencyPairConstructors
 #' @export
-USDHKD <- function () CurrencyPair(USD(), HKD())
+USDHKD <- function () new_CurrencyPair(USD(), HKD())
 #' @rdname CurrencyPairConstructors
 #' @export
-EURNOK <- function () CurrencyPair(EUR(), NOK())
+EURNOK <- function () new_CurrencyPair(EUR(), NOK())
 #' @rdname CurrencyPairConstructors
 #' @export
-USDNOK <- function () CurrencyPair(USD(), NOK())
+USDNOK <- function () new_CurrencyPair(USD(), NOK())
 
 
 add_usny <- function(calendar) {
@@ -211,3 +226,7 @@ remove_usny <- function(calendar) {
   calendar[is_not_usny]
 }
 
+#' @export
+type_sum.CurrencyPair <- function(x) {
+  paste("CCYPair:", iso(x))
+}
